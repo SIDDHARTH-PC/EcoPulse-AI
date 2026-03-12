@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EcoPulse AI — Green Computing Dashboard</title>
+  <style>
+    /* ── Variables ── */
+    :root {
+      --bg:        #0b120e;
+      --bg2:       #0f1a12;
+      --surface:   rgba(18, 32, 20, 0.72);
+      --border:    rgba(57, 255, 100, 0.14);
+      --glow:      rgba(57, 255, 100, 0.18);
+      --green:     #39ff64;
+      --green-dim: #26b847;
+      --green-dk:  #0e4a1e;
+      --text:      #d4f0db;
+      --text-dim:  #6b9b77;
+      --red:       #ff4f64;
+      --amber:     #ffc14f;
+      --radius:    16px;
+      --blur:      blur(18px);
+      --transition: 0.35s cubic-bezier(.4,0,.2,1);
+    }
+    .ultra-green {
+      --bg:      #060d07;
+      --bg2:     #060d07;
+      --surface: rgba(6,13,7,0.95);
+      --glow:    transparent;
+    }
+    .ultra-green * { animation: none !important; transition: color .2s, background .2s !important; }
+    .ultra-green .particle,
+    .ultra-green .grid-lines { display: none !important; }
+    .ultra-green .card-glow { display: none; }
+
+    /* ── Reset & Base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Courier New', 'Lucida Console', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* ── Animated Background ── */
+    .bg-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+    .grid-lines {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(57,255,100,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(57,255,100,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridShift 20s linear infinite;
+    }
+    @keyframes gridShift {
+      0%   { background-position: 0 0; }
+      100% { background-position: 48px 48px; }
+    }
+    .particle {
+      position: absolute;
+      width: 3px; height: 3px;
+      border-radius: 50%;
+      background: var(--green);
+      opacity: 0;
+      animation: float var(--dur, 8s) var(--delay, 0s) infinite ease-in-out;
+    }
+    @keyframes float {
+      0%   { transform: translateY(100vh) translateX(0); opacity: 0; }
+      10%  { opacity: 0.6; }
+      90%  { opacity: 0.2; }
+      100% { transform: translateY(-10vh) translateX(var(--drift, 40px)); opacity: 0; }
+    }
+
+    /* ── Layout ── */
+    .shell {
+      position: relative; z-index: 1;
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 20px 80px;
+    }
+
+    /* ── Glassmorphism helper ── */
+    .glass {
+      background: var(--surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    /* ── Navbar ── */
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 28px;
+      margin: 20px 0;
+      background: var(--surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      box-shadow: 0 0 32px var(--glow);
+    }
+    .nav-logo {
+      font-size: 1.15rem; font-weight: 700; letter-spacing: 0.08em;
+      color: var(--green);
+      text-shadow: 0 0 12px rgba(57,255,100,0.5);
+    }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a {
+      color: var(--text-dim); text-decoration: none; font-size: .85rem;
+      letter-spacing: .06em; text-transform: uppercase;
+      transition: color var(--transition);
+    }
+    .nav-links a:hover { color: var(--green); }
+    .eco-toggle-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 18px;
+      background: var(--green-dk);
+      border: 1px solid var(--green-dim);
+      border-radius: 100px;
+      color: var(--green);
+      font-family: inherit; font-size: .8rem; letter-spacing: .1em;
+      cursor: pointer; transition: all var(--transition);
+    }
+    .eco-toggle-btn:hover { background: var(--green); color: #000; box-shadow: 0 0 18px rgba(57,255,100,.4); }
+    .eco-toggle-btn .leaf { font-size: 1rem; }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 70px 20px 50px;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 14px;
+      background: rgba(57,255,100,0.1);
+      border: 1px solid rgba(57,255,100,0.3);
+      border-radius: 100px;
+      font-size: .72rem; letter-spacing: .15em; text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: 22px;
+      animation: badgePulse 3s ease-in-out infinite;
+    }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
+    @keyframes badgePulse { 0%,100%{opacity:1} 50%{opacity:.65} }
+
+    .hero h1 {
+      font-size: clamp(2.8rem, 8vw, 6rem);
+      font-weight: 900; letter-spacing: -0.02em;
+      line-height: 1.05;
+      color: #fff;
+    }
+    .hero h1 span {
+      color: var(--green);
+      text-shadow: 0 0 40px rgba(57,255,100,.6);
+      display: inline-block;
+      animation: titleGlow 4s ease-in-out infinite;
+    }
+    @keyframes titleGlow {
+      0%,100% { text-shadow: 0 0 30px rgba(57,255,100,.5); }
+      50%      { text-shadow: 0 0 60px rgba(57,255,100,.9), 0 0 100px rgba(57,255,100,.3); }
+    }
+    .hero p {
+      margin: 18px auto 0;
+      max-width: 560px;
+      color: var(--text-dim);
+      font-size: .95rem; line-height: 1.8;
+    }
+
+    /* ── Live Stats ── */
+    .section-title {
+      font-size: .75rem; letter-spacing: .2em; text-transform: uppercase;
+      color: var(--green-dim); margin-bottom: 16px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      padding: 24px 26px;
+      position: relative; overflow: hidden;
+      transition: transform var(--transition), box-shadow var(--transition);
+    }
+    .stat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px var(--glow); }
+    .card-glow {
+      position: absolute; inset: -1px;
+      border-radius: var(--radius);
+      background: radial-gradient(ellipse at top left, rgba(57,255,100,0.06), transparent 70%);
+      pointer-events: none;
+    }
+    .stat-label {
+      font-size: .72rem; letter-spacing: .15em; text-transform: uppercase;
+      color: var(--text-dim); margin-bottom: 10px;
+    }
+    .stat-value {
+      font-size: 2.4rem; font-weight: 700;
+      color: #fff; line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-value.green  { color: var(--green); text-shadow: 0 0 20px rgba(57,255,100,.4); }
+    .stat-value.amber  { color: var(--amber); text-shadow: 0 0 20px rgba(255,193,79,.3); }
+    .stat-value.red    { color: var(--red);   text-shadow: 0 0 20px rgba(255,79,100,.3); }
+    .stat-sub { font-size: .78rem; color: var(--text-dim); margin-bottom: 14px; }
+
+    /* Progress bar */
+    .prog-track {
+      height: 4px; border-radius: 4px;
+      background: rgba(255,255,255,0.06);
+      overflow: hidden;
+    }
+    .prog-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 1s cubic-bezier(.4,0,.2,1);
+    }
+    .prog-fill.green { background: linear-gradient(90deg, var(--green-dim), var(--green)); box-shadow: 0 0 8px var(--green); }
+    .prog-fill.amber { background: linear-gradient(90deg, #b8870a, var(--amber)); }
+    .prog-fill.red   { background: linear-gradient(90deg, #a01020, var(--red)); }
+
+    /* ── Analyzer ── */
+    .analyzer {
+      padding: 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 0 40px rgba(0,0,0,0.3);
+    }
+    .analyzer-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+    }
+    .analyzer-header h2 { font-size: 1.1rem; color: #fff; }
+    .analyzer-header h2 span { color: var(--green); }
+    .realtime-chip {
+      display: flex; align-items: center; gap: 6px;
+      font-size: .7rem; letter-spacing: .12em; color: var(--green);
+    }
+    .realtime-chip .dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+      animation: badgePulse 1.4s ease-in-out infinite;
+    }
+
+    .textarea-wrap { position: relative; }
+    #codeInput {
+      width: 100%;
+      min-height: 160px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--green);
+      font-family: 'Courier New', monospace;
+      font-size: .87rem;
+      line-height: 1.7;
+      padding: 16px;
+      resize: vertical;
+      outline: none;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      caret-color: var(--green);
+    }
+    #codeInput:focus {
+      border-color: rgba(57,255,100,0.4);
+      box-shadow: 0 0 0 3px rgba(57,255,100,0.07);
+    }
+    #codeInput::placeholder { color: var(--text-dim); opacity: .6; }
+
+    .analyzer-actions {
+      display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap;
+    }
+    .btn-analyze {
+      padding: 11px 28px;
+      background: var(--green);
+      color: #000;
+      border: none; border-radius: 8px;
+      font-family: inherit; font-size: .85rem; font-weight: 700;
+      letter-spacing: .08em; cursor: pointer;
+      transition: all var(--transition);
+      box-shadow: 0 0 20px rgba(57,255,100,.3);
+    }
+    .btn-analyze:hover { background: #fff; box-shadow: 0 0 30px rgba(57,255,100,.5); }
+    .btn-clear {
+      padding: 11px 20px;
+      background: transparent;
+      color: var(--text-dim);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit; font-size: .85rem; cursor: pointer;
+      transition: all var(--transition);
+    }
+    .btn-clear:hover { border-color: var(--text-dim); color: var(--text); }
+
+    /* Result panel */
+    #resultPanel {
+      margin-top: 22px;
+      padding: 22px;
+      background: rgba(0,0,0,0.25);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: none;
+      animation: fadeSlideIn .4s ease forwards;
+    }
+    @keyframes fadeSlideIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    #resultPanel.show { display: block; }
+    .result-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+    .score-display {
+      font-size: 3rem; font-weight: 900;
+      transition: color .4s;
+    }
+    .score-label { font-size: .7rem; letter-spacing: .15em; text-transform: uppercase; color: var(--text-dim); }
+    .score-grade {
+      font-size: 1.5rem; font-weight: 700;
+      padding: 6px 16px;
+      border-radius: 8px;
+      letter-spacing: .05em;
+    }
+    .tips-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .tips-list li {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: .83rem; color: var(--text-dim); line-height: 1.6;
+    }
+    .tips-list li::before { content: '▸'; color: var(--green); flex-shrink: 0; }
+
+    /* Score bar */
+    .score-bar-wrap { margin-top: 12px; }
+    .score-bar-track { height: 8px; border-radius: 8px; background: rgba(255,255,255,.06); overflow: hidden; }
+    .score-bar-fill {
+      height: 100%; border-radius: 8px;
+      transition: width 1s cubic-bezier(.4,0,.2,1), background .6s;
+    }
+
+    /* ── Footer strip ── */
+    .footer {
+      text-align: center;
+      padding: 28px 0 0;
+      color: var(--text-dim);
+      font-size: .75rem; letter-spacing: .08em;
+      border-top: 1px solid var(--border);
+      margin-top: 20px;
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .hero h1 { font-size: 2.4rem; }
+      .stats-grid { grid-template-columns: 1fr; }
+      .analyzer { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animated background -->
+<div class="bg-canvas">
+  <div class="grid-lines"></div>
+  <!-- Particles injected by JS -->
+</div>
+
+<div class="shell">
+
+  <!-- Nav -->
+  <nav class="nav glass">
+    <div class="nav-logo">⬡ EcoPulse</div>
+    <div class="nav-links">
+      <a href="#">Dashboard</a>
+      <a href="#">Analytics</a>
+      <a href="#">Reports</a>
+    </div>
+    <button class="eco-toggle-btn" id="ecoToggle">
+      <span class="leaf">🌿</span>
+      <span id="ecoToggleLabel">Ultra-Green Mode</span>
+    </button>
+  </nav>
+
+  <!-- Hero -->
+  <header class="hero">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      Low Carbon Certified
+    </div>
+    <h1>Eco<span>Pulse</span> AI</h1>
+    <p>Real-time carbon footprint analysis for your code and infrastructure. Build greener software — one function at a time.</p>
+  </header>
+
+  <!-- Live Stats -->
+  <p class="section-title">⬡ Live System Metrics</p>
+  <div class="stats-grid">
+
+    <div class="stat-card glass">
+      <div class="card-glow"></div>
+      <div class="stat-label">CPU Load</div>
+      <div class="stat-value amber" id="cpuVal">—</div>
+      <div class="stat-sub" id="cpuSub">Sampling…</div>
+      <div class="prog-track"><div class="prog-fill amber" id="cpuBar" style="width:0%"></div></div>
+    </div>
+
+    <div class="stat-card glass">
+      <div class="card-glow"></div>
+      <div class="stat-label">Carbon Offset</div>
+      <div class="stat-value green" id="carbonVal">—</div>
+      <div class="stat-sub" id="carbonSub">Calculating…</div>
+      <div class="prog-track"><div class="prog-fill green" id="carbonBar" style="width:0%"></div></div>
+    </div>
+
+    <div class="stat-card glass">
+      <div class="card-glow"></div>
+      <div class="stat-label">Network Efficiency</div>
+      <div class="stat-value green" id="netVal">—</div>
+      <div class="stat-sub" id="netSub">Measuring…</div>
+      <div class="prog-track"><div class="prog-fill green" id="netBar" style="width:0%"></div></div>
+    </div>
+
+  </div>
+
+  <!-- Carbon Analyzer -->
+  <div class="analyzer glass">
+    <div class="analyzer-header">
+      <h2>⬡ <span>Carbon Analyzer</span> — Check My Code</h2>
+      <div class="realtime-chip"><span class="dot"></span> Real-time Analysis</div>
+    </div>
+
+    <div class="textarea-wrap">
+      <textarea id="codeInput" placeholder="Paste your code or describe your script here…&#10;&#10;e.g. for (let i = 0; i < 1000000; i++) { heavyComputation(); }"></textarea>
+    </div>
+
+    <div class="analyzer-actions">
+      <button class="btn-analyze" id="analyzeBtn">⬡ Analyze Energy</button>
+      <button class="btn-clear" id="clearBtn">Clear</button>
+    </div>
+
+    <div id="resultPanel">
+      <div class="result-row">
+        <div>
+          <div class="score-label">Energy Efficiency Score</div>
+          <div class="score-display" id="scoreVal">—</div>
+        </div>
+        <div class="score-grade" id="scoreGrade"></div>
+      </div>
+      <div class="score-bar-wrap">
+        <div class="score-bar-track">
+          <div class="score-bar-fill" id="scoreBar" style="width:0%"></div>
+        </div>
+      </div>
+      <ul class="tips-list" id="tipsList" style="margin-top:18px"></ul>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    EcoPulse AI &mdash; Green Computing Dashboard &mdash; 2025 &mdash; Carbon-neutral hosting
+  </footer>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
